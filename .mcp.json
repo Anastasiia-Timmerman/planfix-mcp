@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "planfix": {
+      "command": "npx",
+      "args": ["-y", "@theyahia/planfix-mcp"],
+      "env": {
+        "PLANFIX_TOKEN": ""
+      }
+    }
+  }
+}
