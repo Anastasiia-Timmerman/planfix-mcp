@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { planfixPost } from "../client.js";
+import { planfixPost, planfixGet } from "../client.js";
 
 export const getContactsSchema = z.object({
   offset: z.number().optional().describe("Смещение для пагинации (по умолчанию 0)"),
@@ -13,5 +13,14 @@ export async function handleGetContacts(params: z.infer<typeof getContactsSchema
     pageSize: params.pageSize ?? 100,
     ...(params.filterId ? { filterId: params.filterId } : {}),
   });
+  return JSON.stringify(result, null, 2);
+}
+
+export const getContactSchema = z.object({
+  contactId: z.number().describe("ID контакта"),
+});
+
+export async function handleGetContact(params: z.infer<typeof getContactSchema>): Promise<string> {
+  const result = await planfixGet(`contact/${params.contactId}`);
   return JSON.stringify(result, null, 2);
 }
