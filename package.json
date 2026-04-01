@@ -1,7 +1,7 @@
 {
   "name": "@theyahia/planfix-mcp",
   "version": "1.1.0",
-  "description": "MCP server for Planfix API — tasks, projects, contacts, comments. 10 tools, 2 skills.",
+  "description": "MCP server for Planfix — tasks, contacts, project management (Russia)",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -47,7 +47,9 @@
     "project-management",
     "crm",
     "streamable-http",
-    "smithery"
+    "smithery",
+    "api",
+    "typescript"
   ],
   "license": "MIT",
   "repository": {
