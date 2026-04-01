@@ -1,12 +1,18 @@
 {
   "name": "@theyahia/planfix-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for Planfix API — tasks, contacts. 3 tools.",
+  "version": "1.1.1",
+  "description": "MCP server for Planfix — tasks, contacts, project management (Russia)",
   "type": "module",
   "main": "dist/index.js",
-  "bin": { "planfix-mcp": "dist/index.js" },
-  "files": ["dist"],
-  "engines": { "node": ">=18.0.0" },
+  "bin": {
+    "planfix-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -22,11 +28,28 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "mcpName": "io.github.theYahia/planfix-mcp",
-  "keywords": ["mcp", "mcp-server", "model-context-protocol", "claude", "ai", "russian-api", "planfix", "project-management", "crm"],
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "ai",
+    "russian-api",
+    "planfix",
+    "project-management",
+    "crm",
+    "api",
+    "typescript"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/theYahia/planfix-mcp.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theYahia/planfix-mcp.git"
+  },
   "homepage": "https://github.com/theYahia/planfix-mcp#readme",
   "author": "theYahia (https://github.com/theYahia)"
 }
