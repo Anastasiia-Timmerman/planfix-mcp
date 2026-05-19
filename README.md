@@ -1,3 +1,5 @@
+> 📦 Part of **[WWmcp — Emerging Markets MCP](https://github.com/theYahia/WWmcp)** — 114 MCP servers for non-Western APIs (Brazil/MENA/Gulf/SE Asia/Africa/CIS).
+
 # @theyahia/planfix-mcp
 
 MCP-сервер для Planfix API — задачи, проекты, контакты, комментарии. **10 инструментов, 2 навыка.**
@@ -128,6 +130,15 @@ Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOU
 Добавь комментарий к задаче 456: "Готово"
 ```
 
+## 🚀 Demo prompts
+
+> **Use case (RU):** "Создай задачу 'Звонок клиенту' в Planfix, привяжи к сделке #12345"
+
+🤖 **Pairs well with:**
+- [`@theyahia/kaiten-mcp`](https://github.com/theYahia/kaiten-mcp)
+- [`@theyahia/megaplan-mcp`](https://github.com/theYahia/megaplan-mcp)
+- [`@theyahia/yandex-tracker-mcp`](https://github.com/theYahia/yandex-tracker-mcp)
+
 ## Разработка
 
 ```bash
@@ -150,3 +161,7 @@ npm run build   # TypeScript compile
 ## Лицензия
 
 MIT
+
+---
+
+⭐ **Star if you build with Planfix** — helps other devs find this server.
