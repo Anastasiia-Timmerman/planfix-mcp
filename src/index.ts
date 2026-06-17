@@ -5,10 +5,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "node:http";
 
-import { getTasksSchema, handleGetTasks, getTaskSchema, handleGetTask, createTaskSchema, handleCreateTask, updateTaskSchema, handleUpdateTask } from "./tools/tasks.js";
+import { getTasksSchema, handleGetTasks, getTaskSchema, handleGetTask, getTaskChecklistSchema, handleGetTaskChecklist, createTaskSchema, handleCreateTask, updateTaskSchema, handleUpdateTask } from "./tools/tasks.js";
 import { getContactsSchema, handleGetContacts, getContactSchema, handleGetContact } from "./tools/contacts.js";
-import { getProjectsSchema, handleGetProjects, getProjectSchema, handleGetProject } from "./tools/projects.js";
+import { getProjectsSchema, handleGetProjects, getProjectSchema, handleGetProject, createProjectSchema, handleCreateProject, updateProjectSchema, handleUpdateProject } from "./tools/projects.js";
 import { getCommentsSchema, handleGetComments, addCommentSchema, handleAddComment } from "./tools/comments.js";
+import { linkTasksSchema, handleLinkTasks } from "./tools/relations.js";
+import { getStatusesSchema, handleGetStatuses } from "./tools/statuses.js";
+import { getDirectorySchema, getTemplatesSchema, handleGetTaskCustomFields, handleGetProjectCustomFields, handleGetTaskTemplates, handleGetProjectTemplates } from "./tools/directories.js";
 import { skillMyTasks, skillCreateTask } from "./skills.js";
 
 const VERSION = "1.1.0";
@@ -31,6 +34,13 @@ export function createPlanfixServer(): McpServer {
     "Получить одну задачу по ID.",
     getTaskSchema.shape,
     async (params) => ({ content: [{ type: "text", text: await handleGetTask(params) }] }),
+  );
+
+  server.tool(
+    "get_task_checklist",
+    "Получить чек-лист задачи.",
+    getTaskChecklistSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleGetTaskChecklist(params) }] }),
   );
 
   server.tool(
@@ -76,6 +86,20 @@ export function createPlanfixServer(): McpServer {
   );
 
   server.tool(
+    "create_project",
+    "Создать новый проект в Planfix.",
+    createProjectSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleCreateProject(params) }] }),
+  );
+
+  server.tool(
+    "update_project",
+    "Обновить существующий проект в Planfix.",
+    updateProjectSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleUpdateProject(params) }] }),
+  );
+
+  server.tool(
     "get_comments",
     "Получить комментарии к задаче.",
     getCommentsSchema.shape,
@@ -87,6 +111,48 @@ export function createPlanfixServer(): McpServer {
     "Добавить комментарий к задаче.",
     addCommentSchema.shape,
     async (params) => ({ content: [{ type: "text", text: await handleAddComment(params) }] }),
+  );
+
+  server.tool(
+    "link_tasks",
+    "Создать связь между задачами, если это поддержано Planfix REST API.",
+    linkTasksSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleLinkTasks(params) }] }),
+  );
+
+  server.tool(
+    "get_statuses",
+    "Получить справочник статусов задач по процессам Planfix.",
+    getStatusesSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleGetStatuses(params) }] }),
+  );
+
+  server.tool(
+    "get_task_custom_fields",
+    "Получить справочник кастомных полей задач Planfix.",
+    getDirectorySchema.shape,
+    async () => ({ content: [{ type: "text", text: await handleGetTaskCustomFields() }] }),
+  );
+
+  server.tool(
+    "get_project_custom_fields",
+    "Получить справочник кастомных полей проектов Planfix.",
+    getDirectorySchema.shape,
+    async () => ({ content: [{ type: "text", text: await handleGetProjectCustomFields() }] }),
+  );
+
+  server.tool(
+    "get_task_templates",
+    "Получить список шаблонов задач Planfix.",
+    getTemplatesSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleGetTaskTemplates(params) }] }),
+  );
+
+  server.tool(
+    "get_project_templates",
+    "Получить список шаблонов проектов Planfix.",
+    getTemplatesSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleGetProjectTemplates(params) }] }),
   );
 
   skillMyTasks(server);
@@ -164,7 +230,7 @@ async function main(): Promise<void> {
     const server = createPlanfixServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`[planfix-mcp] v${VERSION} запущен. 10 инструментов, 2 навыка. Stdio.`);
+    console.error(`[planfix-mcp] v${VERSION} запущен. 19 инструментов, 2 навыка. Stdio.`);
   }
 }
 

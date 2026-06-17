@@ -1,7 +1,19 @@
-const TIMEOUT = 15_000;
+const TIMEOUT = 30_000;
 const MAX_RETRIES = 3;
 
+class PlanfixTimeoutError extends Error {
+  constructor(method: string, endpoint: string) {
+    super(`Planfix request timed out after ${TIMEOUT}ms: ${method} ${endpoint}`);
+    this.name = "PlanfixTimeoutError";
+  }
+}
+
 function getBaseUrl(): string {
+  const explicitBaseUrl = process.env.PLANFIX_BASE_URL;
+  if (explicitBaseUrl) {
+    return explicitBaseUrl.replace(/\/+$/, "");
+  }
+
   const account = process.env.PLANFIX_ACCOUNT;
   if (account) {
     return `https://${account}.planfix.com/rest`;
@@ -26,13 +38,14 @@ export async function planfixRequest(
   method: "GET" | "POST",
   endpoint: string,
   body?: Record<string, unknown>,
+  query?: Record<string, string | number | boolean | undefined>,
 ): Promise<unknown> {
   const auth = getAuthHeader();
   const baseUrl = getBaseUrl();
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT);
+    let timer: NodeJS.Timeout | undefined;
 
     try {
       const options: RequestInit = {
@@ -47,9 +60,24 @@ export async function planfixRequest(
         options.body = JSON.stringify(body);
       }
 
-      const url = `${baseUrl}/${endpoint}`.replace(/\/+$/, "");
-      const response = await fetch(url, options);
-      clearTimeout(timer);
+      const url = new URL(`${baseUrl}/${endpoint}`.replace(/\/+$/, ""));
+      if (query) {
+        for (const [key, value] of Object.entries(query)) {
+          if (value !== undefined) {
+            url.searchParams.set(key, String(value));
+          }
+        }
+      }
+      const fetchPromise = fetch(url.toString(), options);
+      fetchPromise.catch(() => undefined);
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new PlanfixTimeoutError(method, endpoint));
+        }, TIMEOUT);
+      });
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      if (timer) clearTimeout(timer);
 
       if (response.ok) {
         const text = await response.text();
@@ -66,10 +94,12 @@ export async function planfixRequest(
       const errBody = await response.text().catch(() => "");
       throw new Error(`Planfix HTTP ${response.status}: ${response.statusText} ${errBody}`);
     } catch (error) {
-      clearTimeout(timer);
-      if (error instanceof DOMException && error.name === "AbortError" && attempt < MAX_RETRIES) {
-        console.error(`[planfix-mcp] Таймаут, повтор (${attempt}/${MAX_RETRIES})`);
-        continue;
+      if (timer) clearTimeout(timer);
+      if (error instanceof PlanfixTimeoutError) {
+        throw error;
+      }
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new PlanfixTimeoutError(method, endpoint);
       }
       throw error;
     }
@@ -83,6 +113,9 @@ export async function planfixPost(endpoint: string, body: Record<string, unknown
 }
 
 /** GET shorthand */
-export async function planfixGet(endpoint: string): Promise<unknown> {
-  return planfixRequest("GET", endpoint);
+export async function planfixGet(
+  endpoint: string,
+  query?: Record<string, string | number | boolean | undefined>,
+): Promise<unknown> {
+  return planfixRequest("GET", endpoint, undefined, query);
 }

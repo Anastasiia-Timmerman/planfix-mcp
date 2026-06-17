@@ -77,4 +77,34 @@ describe("planfixRequest", () => {
     const { planfixRequest } = await import("../src/client.js");
     await expect(planfixRequest("GET", "task/1")).rejects.toThrow("Planfix HTTP 403");
   });
+
+  it("throws a clear timeout error", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { planfixRequest } = await import("../src/client.js");
+    const request = expect(planfixRequest("POST", "task/", { name: "Slow" })).rejects.toThrow(
+      "Planfix request timed out after 30000ms: POST task/",
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await request;
+    vi.useRealTimers();
+  });
+
+  it("times out even if fetch ignores abort", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(() => new Promise(() => undefined));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { planfixRequest } = await import("../src/client.js");
+    const request = expect(planfixRequest("POST", "project/", { name: "Slow" })).rejects.toThrow(
+      "Planfix request timed out after 30000ms: POST project/",
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await request;
+    vi.useRealTimers();
+  });
 });
