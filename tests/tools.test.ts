@@ -339,9 +339,10 @@ describe("comments tools", () => {
 describe("relations tools", () => {
   it("linkTasks returns an explicit unsupported error", async () => {
     const { handleLinkTasks } = await import("../src/tools/relations.js");
-    const result = JSON.parse(await handleLinkTasks({ taskId: 1, relatedTaskId: 2, type: "successor" }));
+    const result = JSON.parse(await handleLinkTasks({ taskId: 1, relatedTaskId: 2, type: "FS", lagDays: 1 }));
     expect(result.result).toBe("fail");
     expect(result.code).toBe("PLANFIX_REST_UNSUPPORTED");
+    expect(result.requested).toMatchObject({ taskId: 1, relatedTaskId: 2, type: "FS", lagDays: 1 });
   });
 });
 

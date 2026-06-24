@@ -111,6 +111,30 @@ Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOU
 | `get_comments` | Комментарии к задаче |
 | `add_comment` | Добавить комментарий к задаче |
 
+## Ограничения Planfix REST API
+
+### Связи задач
+
+`link_tasks` принимает параметры будущей рабочей операции:
+
+- `taskId` — задача-последователь;
+- `relatedTaskId` — задача-предшественник;
+- `type` — `FS`, `SS`, `SF` или `FF`;
+- `lagDays` — запаздывание в днях.
+
+На 2026-06-24 Planfix REST API не предоставляет рабочего способа создать зависимость задач через REST. Проверено по актуальной официальной OpenAPI-спеке [help.planfix.com/restapidocs](https://help.planfix.com/restapidocs/) и на живом аккаунте `aromateam`:
+
+- в списке REST-путей нет endpoint для task links/dependencies/predecessors/successors;
+- `POST /task/{id}/links/`, `/dependencies/`, `/predecessors/`, `/successors/`, `/relations/` возвращают 404;
+- `POST /task/{id}` с полями `dependencies`, `predecessors`, `links`, `relations` возвращает 400;
+- `GET /task/{id}` с полями `dependencies`, `predecessors`, `successors`, `links`, `relations` не возвращает данные связей.
+
+Поэтому `link_tasks` оставлен как явная ошибка `PLANFIX_REST_UNSUPPORTED`, чтобы не делать вид, что связь создана. В веб-интерфейсе Planfix зависимости есть, но в REST они пока не опубликованы.
+
+### Удаление задач
+
+На 2026-06-24 в официальной OpenAPI-спеке `/task/{id}` поддерживает только `GET` и `POST`; `DELETE /task/{id}` на живом API возвращает 405. Поэтому инструмент `delete_task` не добавлен. REST-удаление есть для комментариев, файлов, записей справочников и записей дата-тегов, но не для задач.
+
 ## Навыки (Skills / Prompts) (2)
 
 | Навык | Описание |
