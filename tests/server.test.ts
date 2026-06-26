@@ -6,4 +6,12 @@ describe("createPlanfixServer", () => {
     const server = createPlanfixServer();
     expect(server).toBeDefined();
   });
+
+  it("registers get_tasks and the explicit project task list alias", () => {
+    const server = createPlanfixServer() as unknown as { _registeredTools: Record<string, unknown> };
+    const toolNames = Object.keys(server._registeredTools);
+
+    expect(toolNames).toContain("get_tasks");
+    expect(toolNames).toContain("list_project_tasks");
+  });
 });

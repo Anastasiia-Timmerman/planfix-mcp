@@ -1,6 +1,6 @@
 # @theyahia/planfix-mcp
 
-MCP-сервер для Planfix API — задачи, проекты, контакты, комментарии. **10 инструментов, 2 навыка.**
+MCP-сервер для Planfix API — задачи, проекты, контакты, комментарии. **20 инструментов, 2 навыка.**
 
 [![npm](https://img.shields.io/npm/v/@theyahia/planfix-mcp)](https://www.npmjs.com/package/@theyahia/planfix-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -96,20 +96,30 @@ npx -y @smithery/cli install @theyahia/planfix-mcp --client claude
 
 Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOUNT` задан).
 
-## Инструменты (10)
+## Инструменты (20)
 
 | Инструмент | Описание |
 |------------|----------|
 | `get_tasks` | Список задач с пагинацией и фильтрами |
+| `list_project_tasks` | Явный алиас для поиска задач проекта по `projectId`; использует ту же логику, что `get_tasks` |
 | `get_task` | Одна задача по ID |
+| `get_task_checklist` | Чек-лист задачи |
 | `create_task` | Создание новой задачи |
 | `update_task` | Обновление задачи (название, описание, статус, исполнитель) |
 | `get_contacts` | Список контактов с пагинацией и фильтрами |
 | `get_contact` | Один контакт по ID |
 | `get_projects` | Список проектов с пагинацией |
 | `get_project` | Один проект по ID |
+| `create_project` | Создание нового проекта |
+| `update_project` | Обновление проекта |
 | `get_comments` | Комментарии к задаче |
 | `add_comment` | Добавить комментарий к задаче |
+| `link_tasks` | Явная проверка поддержки связей задач; сейчас возвращает `PLANFIX_REST_UNSUPPORTED` |
+| `get_statuses` | Справочник статусов задач |
+| `get_task_custom_fields` | Справочник кастомных полей задач |
+| `get_project_custom_fields` | Справочник кастомных полей проектов |
+| `get_task_templates` | Список шаблонов задач |
+| `get_project_templates` | Список шаблонов проектов |
 
 ## Ограничения Planfix REST API
 

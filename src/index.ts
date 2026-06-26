@@ -30,6 +30,13 @@ export function createPlanfixServer(): McpServer {
   );
 
   server.tool(
+    "list_project_tasks",
+    "Найти и получить список задач проекта Planfix по projectId: list tasks, search tasks by project, список задач внутри проекта с пагинацией, фильтрами, статусами и сортировкой.",
+    getTasksSchema.shape,
+    async (params) => ({ content: [{ type: "text", text: await handleGetTasks(params) }] }),
+  );
+
+  server.tool(
     "get_task",
     "Получить одну задачу по ID.",
     getTaskSchema.shape,
@@ -230,7 +237,9 @@ async function main(): Promise<void> {
     const server = createPlanfixServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`[planfix-mcp] v${VERSION} запущен. 19 инструментов, 2 навыка. Stdio.`);
+    const toolCount = Object.keys((server as unknown as { _registeredTools?: Record<string, unknown> })._registeredTools ?? {}).length;
+    const promptCount = Object.keys((server as unknown as { _registeredPrompts?: Record<string, unknown> })._registeredPrompts ?? {}).length;
+    console.error(`[planfix-mcp] v${VERSION} запущен. ${toolCount} инструментов, ${promptCount} навыка. Stdio.`);
   }
 }
 
