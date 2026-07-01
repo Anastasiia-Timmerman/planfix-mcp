@@ -1,6 +1,6 @@
 # @theyahia/planfix-mcp
 
-MCP-сервер для Planfix API — задачи, проекты, контакты, комментарии. **20 инструментов, 2 навыка.**
+MCP-сервер для Planfix API — задачи, проекты, контакты, комментарии. **25 инструментов, 2 навыка.**
 
 [![npm](https://img.shields.io/npm/v/@theyahia/planfix-mcp)](https://www.npmjs.com/package/@theyahia/planfix-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -96,30 +96,37 @@ npx -y @smithery/cli install @theyahia/planfix-mcp --client claude
 
 Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOUNT` задан).
 
-## Инструменты (20)
+## Инструменты (25)
 
 | Инструмент | Описание |
 |------------|----------|
-| `get_tasks` | Список задач с пагинацией и фильтрами |
-| `list_project_tasks` | Явный алиас для поиска задач проекта по `projectId`; использует ту же логику, что `get_tasks` |
-| `get_task` | Одна задача по ID |
-| `get_task_checklist` | Чек-лист задачи |
-| `create_task` | Создание новой задачи |
-| `update_task` | Обновление задачи (название, описание, статус, исполнитель) |
-| `get_contacts` | Список контактов с пагинацией и фильтрами |
-| `get_contact` | Один контакт по ID |
-| `get_projects` | Список проектов с пагинацией |
-| `get_project` | Один проект по ID |
-| `create_project` | Создание нового проекта |
-| `update_project` | Обновление проекта |
-| `get_comments` | Комментарии к задаче |
-| `add_comment` | Добавить комментарий к задаче |
-| `link_tasks` | Явная проверка поддержки связей задач; сейчас возвращает `PLANFIX_REST_UNSUPPORTED` |
-| `get_statuses` | Справочник статусов задач |
-| `get_task_custom_fields` | Справочник кастомных полей задач |
-| `get_project_custom_fields` | Справочник кастомных полей проектов |
-| `get_task_templates` | Список шаблонов задач |
-| `get_project_templates` | Список шаблонов проектов |
+| `get_tasks` | `PLANFIX planfix:get_tasks` — список задач с пагинацией и фильтрами |
+| `list_project_tasks` | `PLANFIX planfix:list_project_tasks` — явный алиас для поиска задач проекта по `projectId`; использует ту же логику, что `get_tasks` |
+| `get_task` | `PLANFIX planfix:get_task` — одна задача по ID |
+| `get_task_checklist` | `PLANFIX planfix:get_task_checklist` — чек-лист задачи |
+| `create_task` | `PLANFIX planfix:create_task` — создание новой задачи |
+| `planfix_create_task` | Search-friendly alias для `create_task`, чтобы semantic tool search не путал Planfix с другими CRM |
+| `update_task` | `PLANFIX planfix:update_task` — обновление задачи: `taskId`, `description`, `status`, `customFieldData` |
+| `planfix_update_task` | Search-friendly alias для `update_task`; основной вариант для write-вызовов через tool search |
+| `get_contacts` | `PLANFIX planfix:get_contacts` — список контактов с пагинацией и фильтрами |
+| `get_contact` | `PLANFIX planfix:get_contact` — один контакт по ID |
+| `get_projects` | `PLANFIX planfix:get_projects` — список проектов с пагинацией |
+| `get_project` | `PLANFIX planfix:get_project` — один проект по ID |
+| `create_project` | `PLANFIX planfix:create_project` — создание нового проекта |
+| `planfix_create_project` | Search-friendly alias для `create_project` |
+| `update_project` | `PLANFIX planfix:update_project` — обновление проекта |
+| `planfix_update_project` | Search-friendly alias для `update_project` |
+| `get_comments` | `PLANFIX planfix:get_comments` — комментарии к задаче |
+| `add_comment` | `PLANFIX planfix:add_comment` — добавить комментарий к задаче |
+| `planfix_add_comment` | Search-friendly alias для `add_comment`; основной вариант для комментариев через tool search |
+| `link_tasks` | `PLANFIX planfix:link_tasks` — явная проверка поддержки связей задач; сейчас возвращает `PLANFIX_REST_UNSUPPORTED` |
+| `get_statuses` | `PLANFIX planfix:get_statuses` — справочник статусов задач |
+| `get_task_custom_fields` | `PLANFIX planfix:get_task_custom_fields` — справочник кастомных полей задач |
+| `get_project_custom_fields` | `PLANFIX planfix:get_project_custom_fields` — справочник кастомных полей проектов |
+| `get_task_templates` | `PLANFIX planfix:get_task_templates` — список шаблонов задач |
+| `get_project_templates` | `PLANFIX planfix:get_project_templates` — список шаблонов проектов |
+
+Инструменты с префиксом `planfix_*` дублируют основные write-операции. Они нужны для стабильного semantic tool search в окружениях, где рядом подключены большие CRM-коннекторы с сотнями похожих инструментов.
 
 ## Ограничения Planfix REST API
 

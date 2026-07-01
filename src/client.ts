@@ -68,6 +68,8 @@ export async function planfixRequest(
           }
         }
       }
+      const started = Date.now();
+      console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} start`);
       const fetchPromise = fetch(url.toString(), options);
       fetchPromise.catch(() => undefined);
       const timeoutPromise = new Promise<never>((_resolve, reject) => {
@@ -78,6 +80,8 @@ export async function planfixRequest(
       });
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       if (timer) clearTimeout(timer);
+      const duration = Date.now() - started;
+      console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} -> ${response.status} ${duration}ms`);
 
       if (response.ok) {
         const text = await response.text();
@@ -96,11 +100,15 @@ export async function planfixRequest(
     } catch (error) {
       if (timer) clearTimeout(timer);
       if (error instanceof PlanfixTimeoutError) {
+        console.error(`[planfix-mcp] HTTP ${method} ${endpoint} timeout`);
         throw error;
       }
       if (error instanceof DOMException && error.name === "AbortError") {
+        console.error(`[planfix-mcp] HTTP ${method} ${endpoint} aborted by timeout`);
         throw new PlanfixTimeoutError(method, endpoint);
       }
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[planfix-mcp] HTTP ${method} ${endpoint} error: ${message}`);
       throw error;
     }
   }

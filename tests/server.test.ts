@@ -13,5 +13,7 @@ describe("createPlanfixServer", () => {
 
     expect(toolNames).toContain("get_tasks");
     expect(toolNames).toContain("list_project_tasks");
+    expect(toolNames).toContain("planfix_update_task");
+    expect(toolNames).toContain("planfix_add_comment");
   });
 });

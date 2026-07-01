@@ -15,151 +15,227 @@ import { getDirectorySchema, getTemplatesSchema, handleGetTaskCustomFields, hand
 import { skillMyTasks, skillCreateTask } from "./skills.js";
 
 const VERSION = "1.1.0";
+const TOOL_TIMEOUT = 65_000;
+const PLANFIX_SEARCH_PREFIX = "PLANFIX planfix";
+
+function toolResult(text: string) {
+  return { content: [{ type: "text" as const, text }] };
+}
+
+async function runTool<TParams>(
+  name: string,
+  params: TParams,
+  handler: (params: TParams) => Promise<string>,
+) {
+  const started = Date.now();
+  let timeout: NodeJS.Timeout | undefined;
+  const timer = new Promise<string>((resolve) => {
+    timeout = setTimeout(() => {
+      resolve(JSON.stringify({
+        result: "fail",
+        code: "PLANFIX_MCP_TOOL_TIMEOUT",
+        error: `Planfix MCP tool ${name} timed out after ${TOOL_TIMEOUT}ms`,
+      }, null, 2));
+    }, TOOL_TIMEOUT);
+  });
+
+  console.error(`[planfix-mcp] tool ${name} start`);
+  try {
+    const text = await Promise.race([handler(params), timer]);
+    if (timeout) clearTimeout(timeout);
+    console.error(`[planfix-mcp] tool ${name} finish ${Date.now() - started}ms`);
+    return toolResult(text);
+  } catch (error) {
+    if (timeout) clearTimeout(timeout);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[planfix-mcp] tool ${name} error ${Date.now() - started}ms: ${message}`);
+    return toolResult(JSON.stringify({
+      result: "fail",
+      code: "PLANFIX_MCP_TOOL_ERROR",
+      error: message,
+    }, null, 2));
+  }
+}
 
 export function createPlanfixServer(): McpServer {
   const server = new McpServer({
     name: "planfix-mcp",
     version: VERSION,
-  });
+  }) as McpServer & { tool: (...args: any[]) => unknown };
 
   server.tool(
     "get_tasks",
-    "Получить список задач из Planfix с пагинацией и фильтрами.",
+    `${PLANFIX_SEARCH_PREFIX}:get_tasks task/list список задач Planfix, projectId, statusId, filterId, offset, pageSize.`,
     getTasksSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetTasks(params) }] }),
+    async (params) => runTool("get_tasks", params, handleGetTasks),
   );
 
   server.tool(
     "list_project_tasks",
-    "Найти и получить список задач проекта Planfix по projectId: list tasks, search tasks by project, список задач внутри проекта с пагинацией, фильтрами, статусами и сортировкой.",
+    `${PLANFIX_SEARCH_PREFIX}:list_project_tasks task/list найти задачи проекта по projectId, list tasks, search tasks by project, список задач внутри проекта.`,
     getTasksSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetTasks(params) }] }),
+    async (params) => runTool("list_project_tasks", params, handleGetTasks),
   );
 
   server.tool(
     "get_task",
-    "Получить одну задачу по ID.",
+    `${PLANFIX_SEARCH_PREFIX}:get_task taskId получить одну задачу Planfix по ID.`,
     getTaskSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetTask(params) }] }),
+    async (params) => runTool("get_task", params, handleGetTask),
   );
 
   server.tool(
     "get_task_checklist",
-    "Получить чек-лист задачи.",
+    `${PLANFIX_SEARCH_PREFIX}:get_task_checklist taskId получить чек-лист задачи Planfix.`,
     getTaskChecklistSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetTaskChecklist(params) }] }),
+    async (params) => runTool("get_task_checklist", params, handleGetTaskChecklist),
   );
 
   server.tool(
     "create_task",
-    "Создать новую задачу в Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:create_task write создать новую задачу Planfix, name, description, projectId, assigneeId.`,
     createTaskSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleCreateTask(params) }] }),
+    async (params) => runTool("create_task", params, handleCreateTask),
+  );
+
+  server.tool(
+    "planfix_create_task",
+    `${PLANFIX_SEARCH_PREFIX}:planfix_create_task WRITE ALIAS create_task создать задачу Planfix, name, description, projectId, assigneeId.`,
+    createTaskSchema.shape,
+    async (params) => runTool("planfix_create_task", params, handleCreateTask),
   );
 
   server.tool(
     "update_task",
-    "Обновить существующую задачу в Planfix (название, описание, статус, исполнитель).",
+    `${PLANFIX_SEARCH_PREFIX}:update_task write обновить задачу Planfix по taskId, description, status, assigneeId, customFieldData.`,
     updateTaskSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleUpdateTask(params) }] }),
+    async (params) => runTool("update_task", params, handleUpdateTask),
+  );
+
+  server.tool(
+    "planfix_update_task",
+    `${PLANFIX_SEARCH_PREFIX}:planfix_update_task WRITE ALIAS update_task обновить задачу Planfix taskId description status customFieldData.`,
+    updateTaskSchema.shape,
+    async (params) => runTool("planfix_update_task", params, handleUpdateTask),
   );
 
   server.tool(
     "get_contacts",
-    "Получить список контактов из Planfix с пагинацией и фильтрами.",
+    `${PLANFIX_SEARCH_PREFIX}:get_contacts contact/list получить список контактов Planfix с пагинацией и фильтрами.`,
     getContactsSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetContacts(params) }] }),
+    async (params) => runTool("get_contacts", params, handleGetContacts),
   );
 
   server.tool(
     "get_contact",
-    "Получить одного контакта по ID.",
+    `${PLANFIX_SEARCH_PREFIX}:get_contact contactId получить один контакт Planfix по ID.`,
     getContactSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetContact(params) }] }),
+    async (params) => runTool("get_contact", params, handleGetContact),
   );
 
   server.tool(
     "get_projects",
-    "Получить список проектов из Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_projects project/list получить список проектов Planfix, groupId, parentId, statusId, pageSize.`,
     getProjectsSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetProjects(params) }] }),
+    async (params) => runTool("get_projects", params, handleGetProjects),
   );
 
   server.tool(
     "get_project",
-    "Получить один проект по ID.",
+    `${PLANFIX_SEARCH_PREFIX}:get_project projectId получить один проект Planfix по ID.`,
     getProjectSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetProject(params) }] }),
+    async (params) => runTool("get_project", params, handleGetProject),
   );
 
   server.tool(
     "create_project",
-    "Создать новый проект в Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:create_project write создать новый проект Planfix, name, description, ownerId, groupId.`,
     createProjectSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleCreateProject(params) }] }),
+    async (params) => runTool("create_project", params, handleCreateProject),
+  );
+
+  server.tool(
+    "planfix_create_project",
+    `${PLANFIX_SEARCH_PREFIX}:planfix_create_project WRITE ALIAS create_project создать проект Planfix, name, description, ownerId, groupId.`,
+    createProjectSchema.shape,
+    async (params) => runTool("planfix_create_project", params, handleCreateProject),
   );
 
   server.tool(
     "update_project",
-    "Обновить существующий проект в Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:update_project write обновить проект Planfix projectId, name, description, status, ownerId.`,
     updateProjectSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleUpdateProject(params) }] }),
+    async (params) => runTool("update_project", params, handleUpdateProject),
+  );
+
+  server.tool(
+    "planfix_update_project",
+    `${PLANFIX_SEARCH_PREFIX}:planfix_update_project WRITE ALIAS update_project обновить проект Planfix projectId, name, description, status.`,
+    updateProjectSchema.shape,
+    async (params) => runTool("planfix_update_project", params, handleUpdateProject),
   );
 
   server.tool(
     "get_comments",
-    "Получить комментарии к задаче.",
+    `${PLANFIX_SEARCH_PREFIX}:get_comments taskId получить комментарии задачи Planfix с пагинацией.`,
     getCommentsSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetComments(params) }] }),
+    async (params) => runTool("get_comments", params, handleGetComments),
   );
 
   server.tool(
     "add_comment",
-    "Добавить комментарий к задаче.",
+    `${PLANFIX_SEARCH_PREFIX}:add_comment write добавить комментарий в задачу Planfix, taskId, body, description.`,
     addCommentSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleAddComment(params) }] }),
+    async (params) => runTool("add_comment", params, handleAddComment),
+  );
+
+  server.tool(
+    "planfix_add_comment",
+    `${PLANFIX_SEARCH_PREFIX}:planfix_add_comment WRITE ALIAS add_comment добавить комментарий Planfix taskId body description.`,
+    addCommentSchema.shape,
+    async (params) => runTool("planfix_add_comment", params, handleAddComment),
   );
 
   server.tool(
     "link_tasks",
-    "Создать связь между задачами, если это поддержано Planfix REST API.",
+    `${PLANFIX_SEARCH_PREFIX}:link_tasks связь задач Planfix taskId relatedTaskId FS SS SF FF, сейчас REST unsupported.`,
     linkTasksSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleLinkTasks(params) }] }),
+    async (params) => runTool("link_tasks", params, handleLinkTasks),
   );
 
   server.tool(
     "get_statuses",
-    "Получить справочник статусов задач по процессам Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_statuses получить справочник статусов задач Planfix processId.`,
     getStatusesSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetStatuses(params) }] }),
+    async (params) => runTool("get_statuses", params, handleGetStatuses),
   );
 
   server.tool(
     "get_task_custom_fields",
-    "Получить справочник кастомных полей задач Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_task_custom_fields получить справочник кастомных полей задач Planfix id name type.`,
     getDirectorySchema.shape,
-    async () => ({ content: [{ type: "text", text: await handleGetTaskCustomFields() }] }),
+    async (params) => runTool("get_task_custom_fields", params, () => handleGetTaskCustomFields()),
   );
 
   server.tool(
     "get_project_custom_fields",
-    "Получить справочник кастомных полей проектов Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_project_custom_fields получить справочник кастомных полей проектов Planfix id name type.`,
     getDirectorySchema.shape,
-    async () => ({ content: [{ type: "text", text: await handleGetProjectCustomFields() }] }),
+    async (params) => runTool("get_project_custom_fields", params, () => handleGetProjectCustomFields()),
   );
 
   server.tool(
     "get_task_templates",
-    "Получить список шаблонов задач Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_task_templates получить список шаблонов задач Planfix templateId name.`,
     getTemplatesSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetTaskTemplates(params) }] }),
+    async (params) => runTool("get_task_templates", params, handleGetTaskTemplates),
   );
 
   server.tool(
     "get_project_templates",
-    "Получить список шаблонов проектов Planfix.",
+    `${PLANFIX_SEARCH_PREFIX}:get_project_templates получить список шаблонов проектов Planfix templateId name.`,
     getTemplatesSchema.shape,
-    async (params) => ({ content: [{ type: "text", text: await handleGetProjectTemplates(params) }] }),
+    async (params) => runTool("get_project_templates", params, handleGetProjectTemplates),
   );
 
   skillMyTasks(server);
