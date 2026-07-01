@@ -52,6 +52,7 @@ export async function planfixRequest(
         method,
         headers: {
           "Content-Type": "application/json",
+          Connection: "close",
           Authorization: auth,
         },
         signal: controller.signal,
@@ -70,33 +71,40 @@ export async function planfixRequest(
       }
       const started = Date.now();
       console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} start`);
-      const fetchPromise = fetch(url.toString(), options);
-      fetchPromise.catch(() => undefined);
+      const requestPromise = (async () => {
+        const response = await fetch(url.toString(), options);
+        const duration = Date.now() - started;
+        console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} -> ${response.status} ${duration}ms`);
+
+        if (response.ok) {
+          const text = await response.text();
+          return text ? JSON.parse(text) : {};
+        }
+
+        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+          const delay = Math.min(1000 * 2 ** (attempt - 1), 8000);
+          console.error(`[planfix-mcp] ${response.status}, повтор через ${delay}мс (${attempt}/${MAX_RETRIES})`);
+          await response.text().catch(() => "");
+          await new Promise((r) => setTimeout(r, delay));
+          return Symbol.for("planfix.retry");
+        }
+
+        const errBody = await response.text().catch(() => "");
+        throw new Error(`Planfix HTTP ${response.status}: ${response.statusText} ${errBody}`);
+      })();
+      requestPromise.catch(() => undefined);
       const timeoutPromise = new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => {
           controller.abort();
           reject(new PlanfixTimeoutError(method, endpoint));
         }, TIMEOUT);
       });
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      const result = await Promise.race([requestPromise, timeoutPromise]);
       if (timer) clearTimeout(timer);
-      const duration = Date.now() - started;
-      console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} -> ${response.status} ${duration}ms`);
-
-      if (response.ok) {
-        const text = await response.text();
-        return text ? JSON.parse(text) : {};
-      }
-
-      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
-        const delay = Math.min(1000 * 2 ** (attempt - 1), 8000);
-        console.error(`[planfix-mcp] ${response.status}, повтор через ${delay}мс (${attempt}/${MAX_RETRIES})`);
-        await new Promise((r) => setTimeout(r, delay));
+      if (result === Symbol.for("planfix.retry")) {
         continue;
       }
-
-      const errBody = await response.text().catch(() => "");
-      throw new Error(`Planfix HTTP ${response.status}: ${response.statusText} ${errBody}`);
+      return result;
     } catch (error) {
       if (timer) clearTimeout(timer);
       if (error instanceof PlanfixTimeoutError) {

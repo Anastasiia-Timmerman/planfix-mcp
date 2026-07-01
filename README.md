@@ -128,6 +128,23 @@ Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOU
 
 Инструменты с префиксом `planfix_*` дублируют основные write-операции. Они нужны для стабильного semantic tool search в окружениях, где рядом подключены большие CRM-коннекторы с сотнями похожих инструментов.
 
+## Устойчивость Claude Desktop
+
+Для локального подключения Claude Desktop можно запускать сервер через:
+
+```json
+{
+  "command": "/usr/local/bin/node",
+  "args": ["/path/to/planfix-mcp/bin/planfix-mcp-launcher.cjs"]
+}
+```
+
+Launcher выставляет рабочую папку репозитория, запускает `dist/index.js` и пишет отдельный startup-лог:
+
+`~/Library/Logs/Claude/planfix-mcp-launcher.log`
+
+HTTP-таймаут к Planfix покрывает весь запрос целиком: отправку, получение статуса и чтение тела ответа. Это важно для write-операций вроде `update_project`: если upstream зависает после HTTP-статуса, MCP возвращает понятную ошибку за 30 секунд вместо 4-минутного зависания Claude Desktop.
+
 ## Ограничения Planfix REST API
 
 ### Связи задач
@@ -173,7 +190,7 @@ Base URL: `https://{PLANFIX_ACCOUNT}.planfix.com/rest/` (если `PLANFIX_ACCOU
 
 ```bash
 npm install
-npm test        # Vitest (17 тестов)
+npm test        # Vitest
 npm run dev     # tsx watch
 npm run build   # TypeScript compile
 ```

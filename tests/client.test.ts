@@ -107,4 +107,22 @@ describe("planfixRequest", () => {
     await request;
     vi.useRealTimers();
   });
+
+  it("times out if response body never finishes", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => new Promise(() => undefined),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { planfixRequest } = await import("../src/client.js");
+    const request = expect(planfixRequest("POST", "project/77", { parent: { id: 46 } })).rejects.toThrow(
+      "Planfix request timed out after 30000ms: POST project/77",
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await request;
+    vi.useRealTimers();
+  });
 });
