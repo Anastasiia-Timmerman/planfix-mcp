@@ -32,10 +32,49 @@ if (!fs.existsSync(serverPath)) {
   exitWithError(`server build not found at ${serverPath}`);
 }
 
+// Ключ и аккаунт больше не передаются в открытом виде через конфиг Claude Desktop.
+// Несекретное (account, base_url) берём из ~/.config/planfix/config.json,
+// API-ключ — из связки ключей macOS (служба "planfix"), как пароли в bbmail.
+// Сервер (config.ts) делает то же самое; здесь дублируем на уровне лаунчера,
+// чтобы дочерний процесс гарантированно получил окружение.
+const { execFileSync } = require("node:child_process");
+
+function loadPlanfixConfig() {
+  try {
+    const p = path.join(os.homedir(), ".config", "planfix", "config.json");
+    return JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function keychainGet(account) {
+  try {
+    return execFileSync(
+      "security",
+      ["find-generic-password", "-s", "planfix", "-a", account, "-w"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+const planfixConfig = loadPlanfixConfig();
+if (!process.env.PLANFIX_ACCOUNT && planfixConfig.account) process.env.PLANFIX_ACCOUNT = planfixConfig.account;
+if (!process.env.PLANFIX_BASE_URL && planfixConfig.base_url) process.env.PLANFIX_BASE_URL = planfixConfig.base_url;
+if (!process.env.PLANFIX_API_KEY) {
+  const account = process.env.PLANFIX_ACCOUNT || planfixConfig.account;
+  if (account) {
+    const key = keychainGet(account);
+    if (key) process.env.PLANFIX_API_KEY = key;
+  }
+}
+
 const requiredEnv = ["PLANFIX_ACCOUNT", "PLANFIX_API_KEY"];
 const missingEnv = requiredEnv.filter((name) => !process.env[name]);
 if (missingEnv.length > 0) {
-  exitWithError(`missing env: ${missingEnv.join(", ")}`);
+  exitWithError(`missing config: ${missingEnv.join(", ")}. Проверь ~/.config/planfix/config.json и ключ в Keychain (служба "planfix", аккаунт "${process.env.PLANFIX_ACCOUNT || planfixConfig.account || "?"}").`);
 }
 
 writeLog(`starting ${serverPath}`);

@@ -13,6 +13,7 @@ import { linkTasksSchema, handleLinkTasks } from "./tools/relations.js";
 import { getStatusesSchema, handleGetStatuses } from "./tools/statuses.js";
 import { getDirectorySchema, getTemplatesSchema, handleGetTaskCustomFields, handleGetProjectCustomFields, handleGetTaskTemplates, handleGetProjectTemplates } from "./tools/directories.js";
 import { skillMyTasks, skillCreateTask } from "./skills.js";
+import { applyEnvFromConfig } from "./config.js";
 
 const VERSION = "1.1.0";
 const TOOL_TIMEOUT = 65_000;
@@ -303,6 +304,7 @@ async function startHttpServer(port: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  applyEnvFromConfig();
   const args = process.argv.slice(2);
   const httpIndex = args.indexOf("--http");
 
