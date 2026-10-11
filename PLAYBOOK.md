@@ -133,8 +133,6 @@ planfix task --taskId 10743 --includeDescription
 - **Вложения CLI не отдаёт** (09.10.2026). Прямой REST с тем же ключом из Keychain: список —
   `GET task/<id>/files` (или `files` в `POST task/<id>/comments/list`), скачать —
   `GET file/<fileId>/download`. Проверено на .docx из задачи 14511.
-- **`planfix tasks --projectId` отдаёт и закрытые задачи не всегда очевидно** — при сомнении
-  `POST task/list` с фильтрами `{type:5 проект}` + `{type:10 статус}` по каждому статусу.
 - **ID сотрудников** для `assigneeId` проще всего подсмотреть в URL Planfix или в поле
   `assignees` уже существующей задачи (`planfix task --taskId N`).
 
