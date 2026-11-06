@@ -9,6 +9,10 @@ const TIMEOUT = 30_000;
  * проверкой сертификата на настоящее имя хоста, так что туннель видит только шифрованный поток.
  * Туннель не поднят (порт закрыт) — запрос идёт напрямую, как раньше. На сервере ключа нет — всегда напрямую.
  */
+const TUNNEL_CONNECT = 8_000;
+/** Ошибки, при которых туннель считаем лежащим (ответа ещё не было) — запрос повторяется напрямую. */
+const TUNNEL_DOWN = new Set(["ECONNREFUSED", "ECONNRESET", "EPIPE", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ETUNNELTIMEOUT"]);
+
 function tunnelTarget(): { host: string; port: number } | undefined {
   const raw = process.env.PLANFIX_TUNNEL;
   if (!raw) return undefined;
@@ -37,6 +41,15 @@ function viaTunnel(url: URL, options: RequestInit, target: { host: string; port:
         res.on("error", reject);
       },
     );
+    // Смена сети, сон мака: ssh ещё до ~45 с считает соединение живым, порт открыт, но ответа нет. Не ждём 30 с —
+    // защищённое соединение через туннель не установилось за TUNNEL_CONNECT мс → напрямую (06.11.2026).
+    req.on("socket", (socket) => {
+      const timer = setTimeout(() => {
+        req.destroy(Object.assign(new Error(`туннель не ответил за ${TUNNEL_CONNECT} мс`), { code: "ETUNNELTIMEOUT" }));
+      }, TUNNEL_CONNECT);
+      socket.once("secureConnect", () => clearTimeout(timer));
+      socket.once("close", () => clearTimeout(timer));
+    });
     req.on("error", reject);
     if (options.body) req.write(options.body as string);
     req.end();
@@ -50,7 +63,7 @@ async function send(url: URL, options: RequestInit): Promise<Response> {
       return await viaTunnel(url, options, target);
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code !== "ECONNREFUSED" && code !== "ECONNRESET") throw error;
+      if (!code || !TUNNEL_DOWN.has(code)) throw error;
       console.error(`[planfix-mcp] туннель ${target.host}:${target.port} не поднят (${code}) — иду напрямую`);
     }
   }
