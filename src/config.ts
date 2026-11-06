@@ -16,6 +16,8 @@ import { join } from "node:path";
 export interface PlanfixConfig {
   account?: string;
   base_url?: string;
+  /** "127.0.0.1:18443" — SSH-туннель к Planfix через сервер (launchd ru.wemake.planfix-tunnel); см. client.ts */
+  tunnel?: string;
 }
 
 const CONFIG_PATH = join(homedir(), ".config", "planfix", "config.json");
@@ -52,6 +54,9 @@ export function applyEnvFromConfig(): void {
   }
   if (!process.env.PLANFIX_BASE_URL && cfg.base_url) {
     process.env.PLANFIX_BASE_URL = cfg.base_url;
+  }
+  if (!process.env.PLANFIX_TUNNEL && cfg.tunnel) {
+    process.env.PLANFIX_TUNNEL = cfg.tunnel;
   }
   if (!process.env.PLANFIX_API_KEY) {
     const account = process.env.PLANFIX_ACCOUNT ?? cfg.account;

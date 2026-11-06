@@ -1,4 +1,61 @@
+import https from "node:https";
+
 const TIMEOUT = 30_000;
+
+/**
+ * Туннель через сервер (06.11.2026): с мака через VPN aromateam.planfix.ru то и дело не отвечает, а с сервера в России
+ * отвечает. launchd-агент ru.wemake.planfix-tunnel держит ssh -L 127.0.0.1:18443 → aromateam.planfix.ru:443 через
+ * bb-cashflow; PLANFIX_TUNNEL = "127.0.0.1:18443" (ключ "tunnel" в ~/.config/planfix/config.json). TLS — с SNI и
+ * проверкой сертификата на настоящее имя хоста, так что туннель видит только шифрованный поток.
+ * Туннель не поднят (порт закрыт) — запрос идёт напрямую, как раньше. На сервере ключа нет — всегда напрямую.
+ */
+function tunnelTarget(): { host: string; port: number } | undefined {
+  const raw = process.env.PLANFIX_TUNNEL;
+  if (!raw) return undefined;
+  const m = raw.match(/^([\w.-]+):(\d+)$/);
+  return m ? { host: m[1], port: Number(m[2]) } : undefined;
+}
+
+function viaTunnel(url: URL, options: RequestInit, target: { host: string; port: number }): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        host: target.host,
+        port: target.port,
+        servername: url.hostname,
+        method: options.method,
+        path: url.pathname + url.search,
+        headers: { ...(options.headers as Record<string, string>), Host: url.hostname },
+        signal: options.signal ?? undefined,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () =>
+          resolve(new Response(Buffer.concat(chunks).toString("utf8"), { status: res.statusCode ?? 0, statusText: res.statusMessage ?? "" })),
+        );
+        res.on("error", reject);
+      },
+    );
+    req.on("error", reject);
+    if (options.body) req.write(options.body as string);
+    req.end();
+  });
+}
+
+async function send(url: URL, options: RequestInit): Promise<Response> {
+  const target = tunnelTarget();
+  if (target) {
+    try {
+      return await viaTunnel(url, options, target);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ECONNREFUSED" && code !== "ECONNRESET") throw error;
+      console.error(`[planfix-mcp] туннель ${target.host}:${target.port} не поднят (${code}) — иду напрямую`);
+    }
+  }
+  return fetch(url.toString(), options);
+}
 const MAX_RETRIES = 3;
 
 class PlanfixTimeoutError extends Error {
@@ -72,7 +129,7 @@ export async function planfixRequest(
       const started = Date.now();
       console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} start`);
       const requestPromise = (async () => {
-        const response = await fetch(url.toString(), options);
+        const response = await send(url, options);
         const duration = Date.now() - started;
         console.error(`[planfix-mcp] HTTP ${method} ${endpoint} attempt ${attempt} -> ${response.status} ${duration}ms`);
 
